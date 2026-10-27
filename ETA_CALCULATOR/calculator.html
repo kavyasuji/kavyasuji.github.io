@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ETA Calculator</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #111827;
+        --panel-2: #1f2937;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --accent: #22c55e;
+        --accent-2: #38bdf8;
+        --warning: #fbbf24;
+        --danger: #fb7185;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: Arial, Helvetica, sans-serif;
+        background: linear-gradient(135deg, #0f172a, #111827 40%, #1e293b);
+        color: var(--text);
+      }
+
+      .container {
+        width: min(92vw, 760px);
+        background: rgba(17, 24, 39, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 22px;
+        padding: 28px 24px;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+      }
+
+      h1 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        font-size: clamp(2rem, 5vw, 3rem);
+      }
+
+      .sub {
+        color: var(--muted);
+        margin-bottom: 24px;
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 18px;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      label {
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        background: rgba(15, 23, 42, 0.7);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 1rem;
+      }
+
+      .button-row {
+        display: flex;
+        gap: 12px;
+        margin-top: 22px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: none;
+        border-radius: 12px;
+        padding: 12px 18px;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      .primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white;
+      }
+
+      .secondary {
+        background: rgba(148, 163, 184, 0.12);
+        color: var(--text);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+      }
+
+      .result {
+        margin-top: 28px;
+        background: rgba(31, 41, 55, 0.9);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        border-radius: 18px;
+        padding: 18px 20px;
+      }
+
+      .result-title {
+        margin: 0 0 10px;
+        color: var(--accent-2);
+        font-size: 0.9rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .big {
+        font-size: clamp(1.4rem, 4vw, 2.4rem);
+        font-weight: 700;
+        margin: 8px 0;
+      }
+
+      .meta {
+        margin-top: 10px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <h1>ETA Calculator</h1>
+      <div class="sub">
+        Estimate the remaining time based on how much work is left and your average time per task.
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="totalTasks">Total tasks</label>
+          <input id="totalTasks" type="number" min="1" value="20" />
+        </div>
+
+        <div class="field">
+          <label for="completedTasks">Completed tasks</label>
+          <input id="completedTasks" type="number" min="0" value="8" />
+        </div>
+
+        <div class="field">
+          <label for="avgMinutes">Average time per task (minutes)</label>
+          <input id="avgMinutes" type="number" min="1" value="12" />
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button class="primary" id="calculateBtn">Calculate ETA</button>
+        <button class="secondary" id="resetBtn" type="button">Reset</button>
+      </div>
+
+      <section class="result" aria-live="polite">
+        <div class="result-title">Estimated time remaining</div>
+        <div class="big" id="etaOutput">--</div>
+        <div class="meta" id="detailOutput">Enter values and calculate your estimate.</div>
+      </section>
+    </main>
+
+    <script>
+      const totalTasks = document.getElementById('totalTasks');
+      const completedTasks = document.getElementById('completedTasks');
+      const avgMinutes = document.getElementById('avgMinutes');
+      const calculateBtn = document.getElementById('calculateBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const etaOutput = document.getElementById('etaOutput');
+      const detailOutput = document.getElementById('detailOutput');
+
+      function formatDuration(totalMinutes) {
+        const safeMinutes = Math.max(0, Math.round(totalMinutes));
+        const days = Math.floor(safeMinutes / (60 * 24));
+        const hours = Math.floor((safeMinutes % (60 * 24)) / 60);
+        const minutes = safeMinutes % 60;
+
+        const parts = [];
+        if (days > 0) parts.push(`${days}d`);
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
+
+        return parts.join(' ');
+      }
+
+      function estimateETA() {
+        const total = Number(totalTasks.value);
+        const completed = Number(completedTasks.value);
+        const average = Number(avgMinutes.value);
+
+        if (!Number.isFinite(total) || !Number.isFinite(completed) || !Number.isFinite(average)) {
+          etaOutput.textContent = 'Invalid input';
+          detailOutput.textContent = 'Please enter valid numbers.';
+          return;
+        }
+
+        if (total <= 0 || average <= 0) {
+          etaOutput.textContent = 'Invalid input';
+          detailOutput.textContent = 'Total tasks and average minutes must be greater than zero.';
+          return;
+        }
+
+        if (completed < 0 || completed > total) {
+          etaOutput.textContent = 'Invalid input';
+          detailOutput.textContent = 'Completed tasks must be between 0 and total tasks.';
+          return;
+        }
+
+        const remainingTasks = total - completed;
+        const remainingMinutes = remainingTasks * average;
+        const estimatedCompleteTime = new Date(Date.now() + remainingMinutes * 60 * 1000);
+
+        etaOutput.textContent = formatDuration(remainingMinutes);
+        detailOutput.textContent = `Remaining tasks: ${remainingTasks} | Completion time: ${estimatedCompleteTime.toLocaleString()}`;
+      }
+
+      function resetForm() {
+        totalTasks.value = 20;
+        completedTasks.value = 8;
+        avgMinutes.value = 12;
+        etaOutput.textContent = '--';
+        detailOutput.textContent = 'Enter values and calculate your estimate.';
+      }
+
+      calculateBtn.addEventListener('click', estimateETA);
+      resetBtn.addEventListener('click', resetForm);
+      totalTasks.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') estimateETA();
+      });
+      completedTasks.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') estimateETA();
+      });
+      avgMinutes.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') estimateETA();
+      });
+    </script>
+  </body>
+</html>
